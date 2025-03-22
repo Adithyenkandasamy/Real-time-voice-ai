@@ -25,7 +25,7 @@ def transcribe_audio(file_path, model_size="base"):
 
 def main():
     # Example usage
-    file_path = 'tmpqd0thkig.mp3'  # Replace with your audio file path
+    file_path = '/home/jinwoo/Downloads/tmpqd0thkig.mp3'  # Replace with your audio file path
     result = transcribe_audio(file_path)
     if result:
         print("Transcription result:", result)

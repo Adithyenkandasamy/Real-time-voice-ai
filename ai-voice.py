@@ -14,22 +14,18 @@ class AI_Assistant:
         self.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
 
-        # Validate API keys
+
         if not all([self.elevenlabs_api_key, self.openai_api_key]):
             raise ValueError("⚠️ Missing one or more API keys. Check your .env file.")
 
-        # Set ElevenLabs API Key
         set_api_key(self.elevenlabs_api_key)
 
-        # OpenAI GPT Model Setup
         self.openai_client = OpenAI(api_key=self.openai_api_key)
 
-        # System prompt for AI receptionist
         self.full_transcript = [
             {"role": "system", "content": "You are a receptionist at a dental clinic. Be resourceful and efficient."},
         ]
 
-        # Set default ElevenLabs voice
         self.voice = "Daniel"
 
     def transcribe_audio(self, audio_file_path):
