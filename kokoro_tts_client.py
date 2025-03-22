@@ -4,7 +4,7 @@ import os
 # Kokoro API details
 KOKORO_API_URL = "http://127.0.0.1:8880/v1/audio/speech"
 
-def generate_kokoro_tts(text, voice="af_nova", output_file="response.mp3"):
+def generate_kokoro_tts(text, voice="am_adam", output_file="response.mp3"):
     """Generate speech using Kokoro TTS and return the file path."""
     payload = {
         "model": "kokoro",
