@@ -1,62 +1,87 @@
 import os
 import time
 import dotenv
-from elevenlabs import set_api_key, generate
-from openai import OpenAI
-from fasterwhisper_live import transcribe_audio  # Import from local file
+import sounddevice as sd
+import numpy as np
+import wave
+from fasterwhisper_live import transcribe_audio  # Real-time transcription
+from kokoro_tts_client import generate_kokoro_tts  # Text-to-Speech conversion
+from github_openai import chat  # AI response from GPT-4o
 
 # Load environment variables
 dotenv.load_dotenv()
 
 class AI_Assistant:
     def __init__(self):
-        # Load API keys
-        self.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
-
-
-        if not all([self.elevenlabs_api_key, self.openai_api_key]):
-            raise ValueError("⚠️ Missing one or more API keys. Check your .env file.")
-
-        set_api_key(self.elevenlabs_api_key)
-
-        self.openai_client = OpenAI(api_key=self.openai_api_key)
-
+        """Initialize AI Assistant for real-time transcription and AI responses."""
         self.full_transcript = [
-            {"role": "system", "content": "You are a receptionist at a dental clinic. Be resourceful and efficient."},
+            {"role": "system", "content": "You're a friendly and casual AI assistant. "
+                                          "Talk like a best friend, keeping the conversation natural and fun. "
+                                          "Avoid unnecessary symbols like @#$%^&*. "
+                                          "Make responses smooth and engaging, just like a normal human chat."},
         ]
 
-        self.voice = "Daniel"
+    def record_audio(self, duration=5, samplerate=16000):
+        """Record audio from the microphone in real-time."""
+        print("🎤 Listening... Speak now!")
+        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+        sd.wait()  # Wait for the recording to finish
+        return np.squeeze(audio_data)  # Return raw audio data
+
+    def save_audio_file(self, audio_data, filename="input.wav", samplerate=16000):
+        """Save recorded audio to a file."""
+        with wave.open(filename, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(samplerate)
+            wf.writeframes(audio_data.tobytes())
+        return filename
 
     def transcribe_audio(self, audio_file_path):
-        """Transcribe audio using Faster Whisper"""
+        """Transcribe audio using Faster Whisper."""
         try:
-            result = transcribe_audio(audio_file_path)  # Call the local function
+            result = transcribe_audio(audio_file_path)
             return result if result else "Transcription failed."
         except Exception as e:
             print(f"❌ Error in transcription: {e}")
             return None
 
     def generate_ai_response(self, transcript):
-        """Process user input and generate AI response"""
-        self.full_transcript.append({"role": "user", "content": transcript})
-        print(f"\n👤 Patient: {transcript}", end="\r\n")
+        """Generate a real-time AI response using GPT-4o."""
+        print(f"\n👤 You: {transcript}")
 
-        response = self.openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=self.full_transcript
-        )
-
-        ai_response = response.choices[0].message.content
+        ai_response = chat(transcript)  # Call GPT-4o chat function
         return ai_response
 
     def fast_stream_audio(self, text):
-        """Streams AI-generated voice with lower latency"""
-        start_time = time.time()
+        """Generate and play voice response using Kokoro TTS."""
+        audio_file = generate_kokoro_tts(text, voice="af_nova")
 
-        try:
-            audio = generate(text=text, voice="Daniel", model="eleven_multilingual_v2")
-            return audio
-        except Exception as e:
-            print(f"❌ Error in audio streaming: {e}")
-            return None
+        if audio_file:
+            os.system(f"mpv {audio_file}")  # Play the generated audio
+        else:
+            print("❌ Failed to generate voice response.")
+
+    def run_real_time_conversation(self):
+        """Continuously listens, transcribes, and responds in real-time."""
+        print("🎙️ Real-Time AI Assistant Started. Speak to begin!")
+
+        while True:
+            audio_data = self.record_audio(duration=5)  # Capture 5 seconds of audio
+            audio_file = self.save_audio_file(audio_data)
+
+            transcript = self.transcribe_audio(audio_file)
+            if not transcript:
+                print("⚠️ No speech detected. Try speaking again.")
+                continue
+
+            ai_response = self.generate_ai_response(transcript)
+            print(f"🤖 AI: {ai_response}")
+
+            self.fast_stream_audio(ai_response)  # Convert AI response to speech
+
+
+# Run the assistant
+if __name__ == "__main__":
+    assistant = AI_Assistant()
+    assistant.run_real_time_conversation()
